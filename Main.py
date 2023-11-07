@@ -5,7 +5,7 @@ def execQuery(connect, sql):
     cur.execute(sql)
     connect.commit()
 
-#Conecta no banco postgress, senha está censurada.
+
 def conecta_bd():  # criando conexão com o banco
     connect = psycopg2.connect(
 
@@ -22,7 +22,7 @@ fileName = 'entrada.txt'
 try:
     file = open(fileName, "r", encoding="utf-8")
 except:
-    print('Não foi possível abrir o arquivo') #Caso o arquivo seja inválido
+    print('Não foi possível abrir o arquivo')
     exit(0)
 
 fileArray = file.read().splitlines()
@@ -57,8 +57,6 @@ for line in bd_inicial:
     splitedLine.append('Nao inserido')
 
     bd_vetor.append(splitedLine)
-
-
 
 sql = 'DROP TABLE IF EXISTS log_table'
 execQuery(connect, sql)  # se a tabela já existir, será excluída.
@@ -97,11 +95,11 @@ for item in range(0, len(bd_vetor), 1):
 
 
 # Começa checkpoints
-VisitedCommitedTransactions = {} 
-CKPT = False 
-commitedTransaction = [] 
-TStart = [] 
-TCKPT = [] 
+VisitedCommitedTransactions = {} #Transações que comitaram, serão percorridas mais tarde caso precise fazer alguma troca.
+CKPT = False # Se o programa chegou no checkpoint do arquivo de log.
+commitedTransaction = [] #Transações Commitadas
+TStart = [] #Lista com as transações 'startadas'
+TCKPT = [] #Lista das transações que possuem checkpoint.
 for line in range(len(log)-1, -1, -1): 
     
     if CKPT == True:
@@ -110,12 +108,39 @@ for line in range(len(log)-1, -1, -1):
             
     if 'START' in log[line] and 'CKPT' in log[line]:
         CKPT = True
-        TCKPT.append(log[line].split('(')[1].replace(")>\n", "").replace(" ", ''))
-        print("Transação do checkpoint", TCKPT)
+        TCKPT.append(log[line].split('(')[1].replace(")>", "").replace(" ", ''))
         for lineEndCkpt in range(len(log)-1, -1, -1):
             if 'END' in log[lineEndCkpt] and lineEndCkpt > line:  
                 for lineCkpt in range(line, len(log)-1, 1):
                     if 'commit' in log[lineCkpt]:
                         splitedCommit = log[lineCkpt].split(' ')
                         VisitedCommitedTransactions[splitedCommit[1][:-1]] = 'unvisited' #Marca como não visitada
-                        print("Transação Commitada: ", VisitedCommitedTransactions)
+                    
+    if 'commit' in log[line]:    
+        if CKPT == False:
+            commitedTransaction.append(log[line].split(" ")[1].replace(">", ""))   
+    if "start" in log[line]:
+        TStart.append(log[line].split(" ")[1].replace(">", ""))
+        #if TCKPT in TStart:
+        for item in TStart:
+            if item in TCKPT:
+                TCKPT.remove(item) #Quando chegar ao start da transação do checkpoint remove ela da lista
+
+lastStartLine = 0
+for line in range(len(log)-1, -1, -1):
+    allStarts = True
+    if 'unvisited' in VisitedCommitedTransactions.values():  # caso nao encontrar todos os starts
+        allStarts = False
+    if allStarts == True:
+        break
+    if 'start' in log[line] and 'CKPT' not in log[line]:
+        splitedStart = log[line].split(' ')
+        transaction = splitedStart[1][:-1]
+        if transaction in VisitedCommitedTransactions.keys():
+            VisitedCommitedTransactions[transaction] = 'visited'
+
+    lastStartLine = line
+
+
+
+
