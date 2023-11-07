@@ -143,4 +143,46 @@ for line in range(len(log)-1, -1, -1):
 
 
 
+for line in range(len(log)-1, -1, -1):
+    allStarts = True
+    if 'unvisited' in VisitedCommitedTransactions.values():      
+     # busca valor atual no banco
+        for line in range(lastStartLine, len(log)-1, 1):
+            noMoreOrlessLine = log[line][1:-1]
+            splitedLine = noMoreOrlessLine.split(',')
+        cursor = connect.cursor()
+        cursor.execute(f"SELECT splitedLine[2]  FROM log_table WHERE id = splitedLine[1]")
+        valor_bd = cursor.fetchone()[0]
+
+        # se o valor no banco for diferente do log, faz update no banco
+        if str(valor_bd) != str(splitedLine[0]):
+            cursor.execute(f"UPDATE log_table SET {splitedLine[2]}={splitedLine[3]} WHERE id={splitedLine[1]}")
+
+
+# pegar as informacoes e mostrar o estado final do banco
+for t in TStart:
+    if t not in commitedTransaction:
+        print(f"Transação {t} realizou UNDO")
+cursor = connect.cursor()
+query = "select * from log_table"
+cursor.execute(query)
+logTestrecords = cursor.fetchall()
+print('\nEstado final:')
+print('    ', end="")
+for i in column:
+    print(i+'    ', end="")
+print('')
+
+for row in logTestrecords:
+    for i in row:
+        print(i, '  ', end="")
+    print('')
+    
+connect.close()
+exit(0)
+
+
+
+
+
 
